@@ -1,0 +1,15 @@
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
+
+# Keras Tuner intermediate files
+tuner/
+
+# Streamlit/cache
+.streamlit/
+.cache/
+
+# Optional large exports
+animations/
+*.mp4
+*.gif

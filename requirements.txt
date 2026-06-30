@@ -1,0 +1,16 @@
+# ===============================
+# MNIST Deep Learning Project
+# Requirements
+# ===============================
+
+numpy>=1.26
+matplotlib>=3.9
+tensorflow>=2.19
+keras>=3.10
+keras-tuner>=1.4
+tensorboard>=2.19
+pillow>=11.0
+jupyter>=1.1
+ipykernel>=6.29
+streamlit>=1.40
+plotly>=5.24
