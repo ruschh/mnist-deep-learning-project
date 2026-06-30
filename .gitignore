@@ -1,15 +1,30 @@
+# Python
 __pycache__/
+*.py[cod]
 .ipynb_checkpoints/
-*.pyc
 
-# Keras Tuner intermediate files
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDEs
+.vscode/
+.idea/
+
+# Streamlit cache
+.streamlit/
+
+# TensorBoard
+logs/
+
+# Keras Tuner (artefatos temporários)
 tuner/
 
-# Streamlit/cache
-.streamlit/
+# Python cache
+.pytest_cache/
 .cache/
 
-# Optional large exports
-animations/
-*.mp4
-*.gif
+# Sistema
+.DS_Store
+Thumbs.db

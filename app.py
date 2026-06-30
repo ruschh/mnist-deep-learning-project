@@ -1,5 +1,3 @@
-# app.py
-
 from pathlib import Path
 import time
 
@@ -7,23 +5,18 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation, PillowWriter, FFMpegWriter
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.datasets import mnist
 
 
-# ============================================================
-# Paths
-# ============================================================
-
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIR / "models" / "model_tuner_best_hps.keras"
 HISTORY_PATH = BASE_DIR / "models" / "history_tuner.csv"
+EXPORT_DIR = BASE_DIR / "images"
+EXPORT_DIR.mkdir(exist_ok=True)
 
-
-# ============================================================
-# Streamlit config
-# ============================================================
 
 st.set_page_config(
     page_title="MNIST Neural Network Animation",
@@ -31,10 +24,6 @@ st.set_page_config(
     layout="wide",
 )
 
-
-# ============================================================
-# Loaders
-# ============================================================
 
 @st.cache_resource
 def load_trained_model():
@@ -63,10 +52,6 @@ def load_history():
         "val_accuracy": 0.93 + 0.06 * (1 - np.exp(-epochs / 7)),
     })
 
-
-# ============================================================
-# Plot helpers
-# ============================================================
 
 def get_accuracy_columns(history):
     if "accuracy" in history.columns:
@@ -103,9 +88,12 @@ def draw_training_curves(fig, gs, history, frame_idx):
 
 def draw_input_image(fig, gs, image, true_label):
     ax_img = fig.add_subplot(gs[2, 0])
-
     ax_img.imshow(image.squeeze(), cmap="gray")
-    ax_img.set_title(f"Imagem de entrada\nClasse real: {true_label}", fontsize=12, fontweight="bold")
+    ax_img.set_title(
+        f"Imagem de entrada\nClasse real: {true_label}",
+        fontsize=12,
+        fontweight="bold",
+    )
     ax_img.axis("off")
 
 
@@ -122,9 +110,18 @@ def draw_connections(ax, layer_a, layer_b, color="#505050", alpha=0.45, lw=0.75)
             )
 
 
-def draw_layer(ax, positions, labels=None, base_color="#ff4b4b", edge_color="black",
-               active_index=None, active_color="#00ff00", text_color="white",
-               radius=0.026, fontsize=10):
+def draw_layer(
+    ax,
+    positions,
+    labels=None,
+    base_color="#ff4b4b",
+    edge_color="black",
+    active_index=None,
+    active_color="#00ff00",
+    text_color="white",
+    radius=0.026,
+    fontsize=10,
+):
     for idx, (x, y) in enumerate(positions):
         color = active_color if idx == active_index else base_color
 
@@ -154,30 +151,25 @@ def draw_layer(ax, positions, labels=None, base_color="#ff4b4b", edge_color="bla
 
 def draw_network(ax, probabilities, true_label, predicted_class):
     ax.set_xlim(0, 1)
-    ax.set_ylim(0.00, 0.74)
+    ax.set_ylim(0.01, 0.94)
     ax.axis("off")
-    #ax.set_title("Rede Neural — fluxo de classificação", fontsize=14, fontweight="bold")
 
     layer_sizes = [10, 10, 10, 10, 10]
-    x_positions = [0.10, 0.27, 0.44, 0.61, 0.78]
+    x_positions = [0.10, 0.32, 0.52, 0.72, 0.92]
 
     layers = []
+
     for x, n in zip(x_positions, layer_sizes):
-        ys = np.linspace(0.10, 0.70, n)
+        ys = np.linspace(0.1, 0.90, n)
         layers.append([(x, y) for y in ys])
 
-    input_layer = layers[0]
-    hidden_1 = layers[1]
-    hidden_2 = layers[2]
-    dense_layer = layers[3]
-    output_layer = layers[4]
+    input_layer, hidden_1, hidden_2, dense_layer, output_layer = layers
 
     for layer_a, layer_b in zip(layers[:-1], layers[1:]):
         draw_connections(ax, layer_a, layer_b)
 
     digits = list(range(10))
 
-    # Entrada: todos amarelos; classe real em verde
     draw_layer(
         ax,
         input_layer,
@@ -223,6 +215,7 @@ def draw_network(ax, probabilities, true_label, predicted_class):
 
     # Probabilidade prevista ao lado do neurônio de saída
     x_pred, y_pred = output_layer[int(predicted_class)]
+
     ax.text(
         x_pred + 0.045,
         y_pred,
@@ -268,17 +261,16 @@ def draw_probabilities(fig, gs, probabilities, true_label, predicted_class, conf
 
     status_color = "green" if predicted_class == true_label else "red"
 
-    ax_out.text(
-        0.02,
-        -0.18,
-        f"Predição: {predicted_class}\nConfiança: {confidence:.1%}\nClasse real: {true_label}",
-        transform=ax_out.transAxes,
-        fontsize=11,
-        color=status_color,
-        fontweight="bold",
-        va="top",
-    )
-
+    #ax_out.text(
+    #    0.02,
+    #    0.18,
+    #    f"Predição: {predicted_class}\nConfiança: {confidence:.1%}\nClasse real: {true_label}",
+    #    transform=ax_out.transAxes,
+    #    fontsize=11,
+    #    color=status_color,
+    #    fontweight="bold",
+    #    va="top",
+    #)
 
 def draw_summary_panel(fig, gs, true_label, predicted_class, confidence):
     ax = fig.add_subplot(gs[3, 1])
@@ -307,7 +299,8 @@ def draw_frame(model, history, x_test, y_test, frame_idx):
     predicted_class = int(np.argmax(probabilities))
     confidence = float(np.max(probabilities))
 
-    fig = plt.figure(figsize=(10, 6))
+    fig = plt.figure(figsize=(16, 9))
+
     gs = fig.add_gridspec(
         4,
         3,
@@ -325,7 +318,7 @@ def draw_frame(model, history, x_test, y_test, frame_idx):
     draw_summary_panel(fig, gs, true_label, predicted_class, confidence)
 
     fig.suptitle(
-        f"MNIST Neural Network Animation",
+        "MNIST Neural Network Animation",
         fontsize=17,
         fontweight="bold",
     )
@@ -334,9 +327,73 @@ def draw_frame(model, history, x_test, y_test, frame_idx):
     return fig
 
 
-# ============================================================
-# App
-# ============================================================
+def export_animation(model, history, x_test, y_test, n_frames=40, fps=4, filetype="mp4"):
+    output_path = EXPORT_DIR / f"mnist_neural_network_animation.{filetype}"
+
+    fig = plt.figure(figsize=(16, 9))
+
+    def update(frame_idx):
+        fig.clear()
+
+        image = x_test[frame_idx]
+        true_label = int(y_test[frame_idx])
+
+        probabilities = model.predict(
+            np.expand_dims(image, axis=0),
+            verbose=0,
+        )[0]
+
+        predicted_class = int(np.argmax(probabilities))
+
+        confidence = float(np.max(probabilities))
+
+        gs = fig.add_gridspec(
+            4,
+            3,
+            width_ratios=[1.0, 2.2, 1.1],
+            height_ratios=[1.0, 1.0, 1.0, 0.45],
+        )
+
+        draw_training_curves(fig, gs, history, frame_idx)
+        draw_input_image(fig, gs, image, true_label)
+
+        ax_net = fig.add_subplot(gs[:3, 1])
+        draw_network(ax_net, probabilities, true_label, predicted_class)
+
+        draw_probabilities(fig, gs, probabilities, true_label, predicted_class, confidence)
+        draw_summary_panel(fig, gs, true_label, predicted_class, confidence)
+
+        fig.suptitle(
+            "MNIST Neural Network Animation",
+            fontsize=17,
+            fontweight="bold",
+        )
+
+        plt.tight_layout()
+
+    anim = FuncAnimation(
+        fig,
+        update,
+        frames=n_frames,
+        interval=1000 / fps,
+        repeat=False,
+    )
+
+    if filetype == "gif":
+        writer = PillowWriter(fps=fps)
+        anim.save(output_path, writer=writer)
+
+    elif filetype == "mp4":
+        writer = FFMpegWriter(fps=fps, bitrate=1800)
+        anim.save(output_path, writer=writer)
+
+    else:
+        raise ValueError("filetype deve ser 'gif' ou 'mp4'.")
+
+    plt.close(fig)
+
+    return output_path
+
 
 def main():
     st.title("🧠 MNIST Neural Network Animation")
@@ -369,6 +426,7 @@ def main():
             value=st.session_state.frame_idx,
             step=1,
         )
+
         st.session_state.frame_idx = frame_idx
 
     else:
@@ -399,9 +457,58 @@ def main():
 
             return
 
-        frame_idx = st.session_state.frame_idx
+    st.sidebar.divider()
+    st.sidebar.subheader("Exportar animação")
 
-    fig = draw_frame(model, history, x_test, y_test, st.session_state.frame_idx)
+    export_frames = st.sidebar.slider(
+        "Número de frames para exportar",
+        min_value=5,
+        max_value=100,
+        value=40,
+    )
+
+    export_fps = st.sidebar.slider(
+        "FPS",
+        min_value=1,
+        max_value=10,
+        value=4,
+    )
+
+    export_type = st.sidebar.radio(
+        "Formato",
+        ["mp4", "gif"],
+    )
+
+    if st.sidebar.button("Exportar animação"):
+        with st.spinner("Exportando animação..."):
+            output_path = export_animation(
+                model=model,
+                history=history,
+                x_test=x_test,
+                y_test=y_test,
+                n_frames=export_frames,
+                fps=export_fps,
+                filetype=export_type,
+            )
+
+        st.success(f"Animação exportada com sucesso: {output_path}")
+
+        with open(output_path, "rb") as file:
+            st.download_button(
+                label=f"Baixar {export_type.upper()}",
+                data=file,
+                file_name=output_path.name,
+                mime="video/mp4" if export_type == "mp4" else "image/gif",
+            )
+
+    fig = draw_frame(
+        model,
+        history,
+        x_test,
+        y_test,
+        st.session_state.frame_idx,
+    )
+
     st.pyplot(fig)
     plt.close(fig)
 
